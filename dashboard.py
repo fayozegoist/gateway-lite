@@ -4,7 +4,7 @@ GatewayLite Dashboard + Admin Panel.
 
 - Publik (tanpa login): generate node, create SSH, sub.txt, stats.
 - Admin (login, hanya aktif bila env ADMIN_USER & ADMIN_PASSWORD di-set):
-  ubah settings (TOKEN, banner, dll) dan terapkan live tanpa redeploy.
+  ubah settings (TOKEN, UUID, dll) dan terapkan live tanpa redeploy.
 
 Dashboard juga yang mengelola proses cloudflared (token / quick-tunnel) dan
 Xray, sehingga perubahan TOKEN / UUID langsung diterapkan ke layanan.
@@ -634,7 +634,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 data["quick_tunnel"] = bool(body["quick_tunnel"])
                 changed_token = True
             for k in ("name", "cfip", "argo_domain", "ssh_user", "ssh_password",
-                      "banner", "response"):
+                      "response"):
                 if k in body:
                     data[k] = body[k]
             if "cfport" in body:

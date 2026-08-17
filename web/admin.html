@@ -68,7 +68,6 @@
         </div>
         <label class="check mb"><input type="checkbox" id="s-quick"> Auto quick-tunnel (trycloudflare) bila TOKEN kosong</label>
 
-        <div class="field"><label>Dropbear banner (pesan sebelum login)</label><textarea class="input" id="s-banner" rows="5"></textarea></div>
         <div class="field"><label>Response setelah login (shell script)</label><textarea class="input" id="s-response" rows="8"></textarea></div>
 
         <div class="btn-row">
@@ -192,7 +191,6 @@ async function reloadSettings() {
   $('s-ssh-user').value = s.ssh_user || '';
   $('s-ssh-pass').value = s.ssh_password || '';
   $('s-quick').checked = !!s.quick_tunnel;
-  $('s-banner').value = s.banner || '';
   $('s-response').value = s.response || '';
 }
 $('settings-form').addEventListener('submit', async (e) => {
@@ -209,7 +207,6 @@ $('settings-form').addEventListener('submit', async (e) => {
     ssh_user: $('s-ssh-user').value.trim(),
     ssh_password: $('s-ssh-pass').value,
     quick_tunnel: $('s-quick').checked,
-    banner: $('s-banner').value,
     response: $('s-response').value,
   };
   const res = await api('/api/admin/settings', {

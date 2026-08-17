@@ -14,12 +14,13 @@ import subprocess
 
 SETTINGS_DIR = "/etc/gateway-lite"
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
-BANNER_FILE = "/etc/dropbear_banner"
 RESPONSE_FILE = "/etc/profile.d/99-respon-server.sh"
 BASH_RC = "clear\nR='\\e[1;31m'; G='\\e[1;32m'; C='\\e[1;36m'; N='\\e[0m'\n" \
           "alias c='clear'\nalias x='exit'\nalias +x='chmod +x'\nalias cls='clear;ls'\nmenu\n"
 
-DEFAULT_BANNER = """⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠛⢉⢉⠉⠉⠻⣿⣿⣿⣿⣿⣿
+DEFAULT_RESPONSE = """#!/bin/bash
+clear
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠛⢉⢉⠉⠉⠻⣿⣿⣿⣿⣿⣿
 ⣿⣿⣿⣿⣿⣿⣿⠟⠠⡰⣕⣗⣷⣧⣀⣅⠘⣿⣿⣿⣿⣿
 ⣿⣿⣿⣿⣿⣿⠃⣠⣳⣟⣿⣿⣷⣿⡿⣜⠄⣿⣿⣿⣿⣿
 ⣿⣿⣿⣿⡿⠁⠄⣳⢷⣿⣿⣿⣿⡿⣝⠖⠄⣿⣿⣿⣿⣿
@@ -41,21 +42,8 @@ DEFAULT_BANNER = """⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠛⢉⢉⠉⠉⠻⣿⣿⣿⣿
 ⡿⠋⠄⠄⠄⠄⢀⠒⠝⣞⢿⡿⣿⣽⢿⡽⣧⣳⡅⠌⠻⣿
 ⠁⠄⠄⠄⠄⠄⠐⡐⠱⡱⣻⡻⣝⣮⣟⣿⣻⣟⣻⡺⣊"""
 
-DEFAULT_RESPONSE = """#!/bin/bash
-clear
-echo -e "\\e[1;36m=================================================\\e[0m"
-echo -e "\\e[1;32m       [✓] BERHASIL TERHUBUNG KE SERVER!         \\e[0m"
-echo -e "\\e[1;36m=================================================\\e[0m"
-echo -e "\\e[1;37m Username     : \\e[1;33m$USER\\e[0m"
-echo -e "\\e[1;37m Waktu Server : \\e[1;33m$(date)\\e[0m"
-echo -e "\\e[1;37m OS           : \\e[1;33mAlpine (GatewayLite Mode)\\e[0m"
-echo -e "\\e[1;36m=================================================\\e[0m"
-echo -e "\\e[1;31m   TETAP PATUHI RULES SERVER AGAR TIDAK BANNED   \\e[0m"
-echo -e "\\e[1;36m=================================================\\e[0m"
-"""
-
 KEYS = ("uuid", "name", "cfip", "cfport", "argo_domain", "token",
-        "ssh_user", "ssh_password", "banner", "response", "quick_tunnel")
+        "ssh_user", "ssh_password", "response", "quick_tunnel")
 
 
 def env_defaults():
@@ -68,7 +56,6 @@ def env_defaults():
         "token": os.environ.get("TOKEN", ""),
         "ssh_user": os.environ.get("SSH_USER", "hidup"),
         "ssh_password": os.environ.get("SSH_PASSWORD", "jokowi"),
-        "banner": DEFAULT_BANNER,
         "response": DEFAULT_RESPONSE,
         "quick_tunnel": os.environ.get("QUICK_TUNNEL", "1") == "1",
     }
@@ -108,14 +95,6 @@ def public_view(data):
     return view
 
 
-def apply_banner(banner):
-    try:
-        with open(BANNER_FILE, "w") as f:
-            f.write(banner or "")
-    except Exception:
-        pass
-
-
 def apply_response(response):
     try:
         with open(RESPONSE_FILE, "w") as f:
@@ -146,6 +125,5 @@ def apply_ssh_user(user, password):
 
 
 def apply_all(data):
-    apply_banner(data.get("banner"))
     apply_response(data.get("response"))
     apply_ssh_user(data.get("ssh_user"), data.get("ssh_password"))

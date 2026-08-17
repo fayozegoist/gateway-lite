@@ -18,8 +18,10 @@ QUICK_TUNNEL="${QUICK_TUNNEL:-1}"   # quick tunnel trycloudflare bila TOKEN koso
 
 mkdir -p /opt/gateway/bin /opt/gateway/logs /etc/ssh-sni
 
-echo "[*] Mengonfigurasi Banner Dropbear (pra-login)..."
-cat << 'EOF' > /etc/dropbear_banner
+echo "[*] Mengonfigurasi Respon Server (pasca-login)..."
+cat << 'EOF' > /etc/profile.d/99-respon-server.sh
+#!/bin/bash
+clear
 ⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠛⢉⢉⠉⠉⠻⣿⣿⣿⣿⣿⣿
 ⣿⣿⣿⣿⣿⣿⣿⠟⠠⡰⣕⣗⣷⣧⣀⣅⠘⣿⣿⣿⣿⣿
 ⣿⣿⣿⣿⣿⣿⠃⣠⣳⣟⣿⣿⣷⣿⡿⣜⠄⣿⣿⣿⣿⣿
@@ -41,21 +43,6 @@ cat << 'EOF' > /etc/dropbear_banner
 ⣿⣿⡿⠛⠉⠁⠄⢕⡳⣽⡾⣿⢽⣯⡿⣮⢚⣅⠹⣿⣿⣿
 ⡿⠋⠄⠄⠄⠄⢀⠒⠝⣞⢿⡿⣿⣽⢿⡽⣧⣳⡅⠌⠻⣿
 ⠁⠄⠄⠄⠄⠄⠐⡐⠱⡱⣻⡻⣝⣮⣟⣿⣻⣟⣻⡺⣊
-EOF
-
-echo "[*] Mengonfigurasi Respon Server (pasca-login)..."
-cat << 'EOF' > /etc/profile.d/99-respon-server.sh
-#!/bin/bash
-clear
-echo -e "\e[1;36m=================================================\e[0m"
-echo -e "\e[1;32m       [✓] BERHASIL TERHUBUNG KE SERVER!         \e[0m"
-echo -e "\e[1;36m=================================================\e[0m"
-echo -e "\e[1;37m Username     : \e[1;33m$USER\e[0m"
-echo -e "\e[1;37m Waktu Server : \e[1;33m$(date)\e[0m"
-echo -e "\e[1;37m OS           : \e[1;33mAlpine (GatewayLite Mode)\e[0m"
-echo -e "\e[1;36m=================================================\e[0m"
-echo -e "\e[1;31m   TETAP PATUHI RULES SERVER AGAR TIDAK BANNED   \e[0m"
-echo -e "\e[1;36m=================================================\e[0m"
 EOF
 chmod +x /etc/profile.d/99-respon-server.sh
 
@@ -81,7 +68,7 @@ menu
 EOF
 
 echo "[*] Memulai Dropbear di 127.0.0.1:22 ..."
-/usr/sbin/dropbear -R -p 127.0.0.1:22 -b /etc/dropbear_banner -W 65536
+/usr/sbin/dropbear -R -p 127.0.0.1:22 -W 65536
 
 echo "[*] Memulai Stunnel (internal, port $SSL_INTERNAL_PORT)..."
 cat > /etc/stunnel/stunnel.conf << EOF
