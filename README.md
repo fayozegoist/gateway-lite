@@ -162,6 +162,10 @@ Login pakai `ADMIN_USER` / `ADMIN_PASSWORD`.
 
 Fitur:
 - **Settings** — ubah `UUID`, `TOKEN`, `ARGO_DOMAIN`, `SSH_USER`, `SSH_PASSWORD`, banner, dll. **Langsung berlaku tanpa redeploy.**
+
+> **Catatan banner Dropbear:** maksimal **2050 byte** (batas internal dropbear). Banner yang
+> lebih besar dari itu **tidak ditampilkan** (dropbear hanya menulis warning). Saat mengedit
+> banner di Admin Panel, pastikan ukurannya tetap di bawah 2050 byte.
 - **Tunnels** — status cloudflared, restart, daftar domain.
 - **SSH Users** — lihat/hapus akun SSH.
 - **Logs** — log tunnel.
