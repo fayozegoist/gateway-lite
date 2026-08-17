@@ -166,6 +166,10 @@ class TunnelManager:
                     p.terminate()
                 except Exception:
                     pass
+                try:
+                    p.wait(timeout=5)
+                except Exception:
+                    pass
             self.procs = []
 
     def sync(self):
@@ -179,8 +183,8 @@ class TunnelManager:
         status = "stopped"
         if tokens:
             for t in tokens:
-                cmd = [CLOUDFLARED, "tunnel", "run", "--token", t,
-                       "--logfile", BOOT_LOG, "--loglevel", "info"]
+                cmd = [CLOUDFLARED, "--logfile", BOOT_LOG, "--loglevel", "info",
+                       "tunnel", "run", "--token", t]
                 try:
                     procs.append(subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
                                                   stderr=subprocess.DEVNULL))
@@ -189,9 +193,9 @@ class TunnelManager:
             status = "token" if procs else "error"
             detail = detail or f"{len(procs)} tunnel(s)"
         elif quick:
-            cmd = [CLOUDFLARED, "tunnel", "--edge-ip-version", "auto", "--no-autoupdate",
-                   "--protocol", "http2", "--url", f"http://127.0.0.1:{PUBLIC_PORT}",
-                   "--logfile", BOOT_LOG, "--loglevel", "info"]
+            cmd = [CLOUDFLARED, "--logfile", BOOT_LOG, "--loglevel", "info",
+                   "tunnel", "--edge-ip-version", "auto", "--no-autoupdate",
+                   "--protocol", "http2", "--url", f"http://127.0.0.1:{PUBLIC_PORT}"]
             try:
                 procs.append(subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
                                               stderr=subprocess.DEVNULL))
@@ -240,6 +244,16 @@ def start_xray(uuid):
         print(f"[dashboard] xray started (uuid {uuid[:8]}...)", flush=True)
     except Exception as e:
         print(f"[dashboard] xray start error: {e}", flush=True)
+
+
+def xray_running():
+    if _xray_proc is not None and _xray_proc.poll() is None:
+        return True
+    try:
+        return subprocess.call(["pgrep", "-x", os.path.basename(XRAY_BIN)],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    except Exception:
+        return False
 
 
 # ============================== SSH ACCOUNTS ==============================
@@ -462,7 +476,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             self._json({
                 "tunnel": {"status": _tunnels.status, "detail": _tunnels.detail},
-                "xray": {"running": _xray_proc is not None and _xray_proc.poll() is None},
+                "xray": {"running": xray_running()},
                 "domains": _domains,
                 "admin_enabled": ADMIN_ENABLED,
             })
