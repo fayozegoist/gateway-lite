@@ -1,10 +1,47 @@
+# ============================================================
+# Stage 1: build dropbear 2019.78 dari source (musl/Alpine 3.20)
+# ============================================================
+FROM alpine:3.20 AS dropbear-builder
+
+RUN apk add --no-cache \
+    curl \
+    tar \
+    bzip2 \
+    make \
+    gcc \
+    musl-dev \
+    linux-headers \
+    binutils \
+    && rm -rf /var/cache/apk/*
+
+RUN set -eux; \
+    cd /tmp; \
+    curl -fsSL -o dropbear-2019.78.tar.bz2 \
+      "https://matt.ucc.asn.au/dropbear/releases/dropbear-2019.78.tar.bz2"; \
+    tar xjf dropbear-2019.78.tar.bz2; \
+    cd dropbear-2019.78; \
+    ./configure --prefix=/opt/dropbear \
+      --disable-zlib \
+      --disable-pam \
+      --disable-lastlog \
+      --disable-utmp \
+      --disable-wtmp \
+      --disable-utmpx \
+      --disable-wtmpx \
+      --disable-syslog; \
+    make -j"$(nproc)"; \
+    make install; \
+    strip /opt/dropbear/sbin/dropbear
+
+# ============================================================
+# Stage 2: image final
+# ============================================================
 FROM alpine:3.20
 
 # Base OS ringan: Alpine Linux (~5MB)
 # Semua kebutuhan di-install dari paket apk yang sangat kecil.
 
 RUN apk add --no-cache \
-    dropbear \
     stunnel \
     openssl \
     python3 \
@@ -16,6 +53,9 @@ RUN apk add --no-cache \
     procps \
     tzdata \
     && rm -rf /var/cache/apk/*
+
+# dropbear versi 2019.78 (build dari source, menggantikan paket apk)
+COPY --from=dropbear-builder /opt/dropbear/sbin/dropbear /usr/sbin/dropbear
 
 # Direktori run + data
 RUN mkdir -p /var/run/dropbear /var/run/stunnel /etc/dropbear /etc/stunnel \
