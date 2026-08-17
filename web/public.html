@@ -23,45 +23,6 @@
   </section>
 
   <section class="section">
-    <div class="section-head">
-      <span class="section-label">Telemetry</span>
-      <span class="section-label mono">1s refresh</span>
-    </div>
-    <div class="grid-4">
-      <div class="card">
-        <span class="section-label">CPU</span>
-        <div class="stat-value" id="cpu-val">–</div>
-        <div class="bar"><div class="bar-fill" id="cpu-bar" style="width:0%"></div></div>
-      </div>
-      <div class="card">
-        <span class="section-label">RAM</span>
-        <div class="stat-value" id="ram-val">–</div>
-        <div class="bar"><div class="bar-fill" id="ram-bar" style="width:0%"></div></div>
-      </div>
-      <div class="card">
-        <span class="section-label">Download</span>
-        <div class="stat-value" id="dl-total">0 B</div>
-        <div class="stat-sub" id="dl-speed">0 B/s</div>
-      </div>
-      <div class="card">
-        <span class="section-label">Upload</span>
-        <div class="stat-value" id="ul-total">0 B</div>
-        <div class="stat-sub" id="ul-speed">0 B/s</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="section-head">
-      <span class="section-label">Network traffic</span>
-      <span class="section-label mono">last 60s</span>
-    </div>
-    <div class="card" style="padding:12px">
-      <div style="width:100%;height:120px;position:relative"><canvas id="trafficChart"></canvas></div>
-    </div>
-  </section>
-
-  <section class="section">
     <div class="section-head"><span class="section-label">Node generator</span></div>
     <div class="card">
       <div class="card-title">
@@ -149,62 +110,6 @@ function copyText(id, btn) {
   });
 }
 function copyConfig() { copyText('config-output', $('copy-btn')); }
-
-function formatBytes(b) {
-  if (!b || b === 0) return '0 B';
-  const k = 1024, s = ['B','KB','MB','GB','TB'], i = Math.floor(Math.log(b)/Math.log(k));
-  return parseFloat((b/Math.pow(k,i)).toFixed(2)) + ' ' + s[i];
-}
-function formatTime(ts) {
-  const d = Math.floor(ts/86400), h = Math.floor((ts%86400)/3600),
-        m = Math.floor((ts%3600)/60), s = ts%60;
-  return (d>0 ? d+'d ' : '') + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-}
-
-/* ---- chart ---- */
-const canvas = $('trafficChart'), ctx = canvas.getContext('2d');
-const MAX = 60;
-let hist = new Array(MAX).fill(0), lastRx = 0, first = true;
-function drawChart() {
-  const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width = rect.width * devicePixelRatio; canvas.height = rect.height * devicePixelRatio;
-  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
-  const w = rect.width, h = rect.height;
-  ctx.clearRect(0,0,w,h);
-  ctx.strokeStyle = '#1c1c1c'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0,h/2); ctx.lineTo(w,h/2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(w/2,0); ctx.lineTo(w/2,h); ctx.stroke();
-  const max = Math.max(...hist, 1024);
-  ctx.beginPath();
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  for (let i=0;i<hist.length;i++) {
-    const x = (i/(MAX-1))*w, y = h - (hist[i]/max)*(h-8) - 4;
-    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-  }
-  ctx.stroke();
-}
-
-/* ---- stats ---- */
-async function refreshStats() {
-  try {
-    const data = await (await fetch('/api/stats')).json();
-    $('cpu-val').textContent = data.cpu + '%';
-    const cb = $('cpu-bar'); cb.style.width = data.cpu + '%'; cb.classList.toggle('warn', data.cpu > 80);
-    $('ram-val').textContent = data.ram + '%';
-    const rb = $('ram-bar'); rb.style.width = data.ram + '%'; rb.classList.toggle('warn', data.ram > 85);
-    let speed = 0;
-    if (!first) speed = Math.max(0, data.rx - lastRx);
-    first = false; lastRx = data.rx;
-    $('dl-total').textContent = formatBytes(data.rx);
-    $('dl-speed').textContent = formatBytes(speed) + '/s';
-    $('ul-total').textContent = formatBytes(data.tx);
-    $('ul-speed').textContent = formatBytes(Math.max(0, data.tx - (window._lastTx||0))) + '/s';
-    window._lastTx = data.tx;
-    hist.push(speed); hist.shift(); drawChart();
-  } catch(e) {}
-}
-refreshStats(); setInterval(refreshStats, 1000);
-window.addEventListener('resize', drawChart);
 
 /* ---- generator ---- */
 let current = { network: 'native', proto: 'vless' };
