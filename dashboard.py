@@ -335,6 +335,23 @@ def domain_poller():
         time.sleep(5)
 
 
+def ssh_endpoints(req_host):
+    """Endpoint SSH untuk ditampilkan: Domain SSL (Railway) & Domain WS (Cloudflare)."""
+    d = S.load()
+    req_host = (req_host or "").split(":")[0]
+    ssl_host = (os.environ.get("SSL_HOST") or "").strip() or req_host
+    ssl_port = (os.environ.get("SSL_PORT") or "").strip() or "443"
+    ws_host = (d.get("argo_domain") or "").strip()
+    if not ws_host:
+        ws_host = next((x for x in _domains if x != req_host), "")
+    if not ws_host:
+        ws_host = req_host
+    return {
+        "ssl": {"label": "Domain SSL", "host": ssl_host, "port": ssl_port},
+        "ws": {"label": "Domain WS", "host": ws_host, "port": "443"},
+    }
+
+
 # ============================== AUTH ==============================
 
 def login_ok(user, password):
@@ -524,8 +541,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 days = None
             try:
                 exp = create_ssh(username, password, days)
+                ep = ssh_endpoints(self._host())
                 self._json({"ok": True, "username": username, "password": password,
-                            "expired": exp, "host": self._host(), "port": PUBLIC_PORT})
+                            "expired": exp, "host": ep["ssl"]["host"],
+                            "port": ep["ssl"]["port"],
+                            "ssl": ep["ssl"], "ws": ep["ws"]})
             except Exception as e:
                 self._json({"ok": False, "error": str(e)}, 400)
             return

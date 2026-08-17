@@ -205,6 +205,8 @@ delssh user               # hapus akun
 | `CFIP` | `saas.sin.fan` | IP CDN / SNI untuk node bug |
 | `CFPORT` | `443` | Port CDN |
 | `QUICK_TUNNEL` | `1` | Quick tunnel trycloudflare jika `TOKEN` kosong |
+| `SSL_HOST` | kosong | Host endpoint **SSH-SSL** (domain Railway TCP proxy, misal `nama.proxy.rlwy.net`). Jika kosong, pakai domain yang mengakses panel |
+| `SSL_PORT` | `443` | Port endpoint **SSH-SSL** (port TCP proxy, misal `31111`). Jika kosong, default `443` |
 
 ---
 

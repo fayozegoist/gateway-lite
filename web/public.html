@@ -80,9 +80,23 @@
           <dt>Username</dt><dd id="r-user">–</dd>
           <dt>Password</dt><dd id="r-pass">–</dd>
           <dt>Expired</dt><dd id="r-exp">–</dd>
-          <dt>Server</dt><dd id="r-host">–</dd>
-          <dt>Port</dt><dd id="r-port">–</dd>
         </dl>
+
+        <div style="margin-top:20px">
+          <div class="section-head"><span class="section-label">Domain SSL (Railway) — SSH via SSL/TLS</span></div>
+          <dl class="kv">
+            <dt>Host</dt><dd id="r-ssl-host">–</dd>
+            <dt>Port</dt><dd id="r-ssl-port">–</dd>
+          </dl>
+        </div>
+
+        <div style="margin-top:16px">
+          <div class="section-head"><span class="section-label">Domain WS (Cloudflare) — SSH via WebSocket</span></div>
+          <dl class="kv">
+            <dt>Host</dt><dd id="r-ws-host">–</dd>
+            <dt>Port</dt><dd id="r-ws-port">–</dd>
+          </dl>
+        </div>
       </div>
     </div>
   </section>
@@ -151,8 +165,10 @@ $('ssh-form').addEventListener('submit', async (e) => {
       $('r-user').textContent = res.username;
       $('r-pass').textContent = res.password;
       $('r-exp').textContent = res.expired;
-      $('r-host').textContent = res.host;
-      $('r-port').textContent = res.port;
+      $('r-ssl-host').textContent = res.ssl.host;
+      $('r-ssl-port').textContent = res.ssl.port;
+      $('r-ws-host').textContent = res.ws.host;
+      $('r-ws-port').textContent = res.ws.port;
       $('ssh-result').classList.remove('hidden');
       e.target.reset();
       toast('SSH account created');
