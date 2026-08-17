@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADMIN — GATEWAYLITE</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark"></span>
+      <span class="wordmark">GatewayLite</span>
+    </div>
+    <div class="btn-row">
+      <a class="btn ghost" href="/">Public</a>
+      <button class="btn ghost" id="logout-btn">SIGN OUT</button>
+    </div>
+  </header>
+
+  <nav class="nav" id="nav">
+    <button class="active" data-view="overview">Overview</button>
+    <button data-view="settings">Settings</button>
+    <button data-view="tunnels">Tunnels</button>
+    <button data-view="users">SSH Users</button>
+    <button data-view="logs">Logs</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="view" data-view="overview">
+    <div class="grid-4 mb">
+      <div class="card"><span class="section-label">CPU</span><div class="stat-value" id="cpu-val">–</div></div>
+      <div class="card"><span class="section-label">RAM</span><div class="stat-value" id="ram-val">–</div></div>
+      <div class="card"><span class="section-label">Download</span><div class="stat-value" id="dl-val">0 B</div></div>
+      <div class="card"><span class="section-label">Upload</span><div class="stat-value" id="ul-val">0 B</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <span class="section-label">Service status</span>
+        <span class="section-label mono" id="ov-time">–</span>
+      </div>
+      <dl class="kv">
+        <dt>Uptime</dt><dd id="ov-uptime">–</dd>
+        <dt>Tunnel</dt><dd id="ov-tunnel">–</dd>
+        <dt>Detail</dt><dd id="ov-tunnel-detail">–</dd>
+        <dt>Xray</dt><dd id="ov-xray">–</dd>
+        <dt>Domains</dt><dd id="ov-domains">–</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view hidden" data-view="settings">
+    <div class="card">
+      <div class="card-title"><span class="section-label">Runtime settings</span></div>
+      <form id="settings-form">
+        <div class="grid-2">
+          <div class="field"><label>UUID (Xray)</label><input class="input" id="s-uuid"></div>
+          <div class="field"><label>NAME</label><input class="input" id="s-name"></div>
+          <div class="field"><label>CFIP (bug CDN)</label><input class="input" id="s-cfip"></div>
+          <div class="field"><label>CFPORT</label><input class="input" id="s-cfport" type="number"></div>
+          <div class="field"><label>ARGO_DOMAIN</label><input class="input" id="s-argo-domain" placeholder="opsional"></div>
+          <div class="field"><label>TOKEN (banyak: pisah koma)</label><input class="input" id="s-token"></div>
+          <div class="field"><label>SSH_USER</label><input class="input" id="s-ssh-user"></div>
+          <div class="field"><label>SSH_PASSWORD</label><input class="input" id="s-ssh-pass"></div>
+        </div>
+        <label class="check mb"><input type="checkbox" id="s-quick"> Auto quick-tunnel (trycloudflare) bila TOKEN kosong</label>
+
+        <div class="field"><label>Dropbear banner (pesan sebelum login)</label><textarea class="input" id="s-banner" rows="5"></textarea></div>
+        <div class="field"><label>Response setelah login (shell script)</label><textarea class="input" id="s-response" rows="8"></textarea></div>
+
+        <div class="btn-row">
+          <button class="btn primary" type="submit">SAVE &amp; APPLY</button>
+          <button class="btn ghost" type="button" onclick="reloadSettings()">RELOAD</button>
+        </div>
+        <p class="muted mt" style="font-size:11px">Perubahan tersimpan di <span class="mono">settings.json</span> dan langsung diterapkan (tunnel/Xray di-restart bila perlu). Redeploy Railway mengembalikan ke nilai env.</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- TUNNELS -->
+  <section class="view hidden" data-view="tunnels">
+    <div class="card">
+      <div class="card-title">
+        <span class="section-label">Cloudflare tunnel</span>
+        <button class="btn" id="tunnel-restart-btn" onclick="restartTunnel()">RESTART</button>
+      </div>
+      <dl class="kv">
+        <dt>Mode</dt><dd id="t-mode">–</dd>
+        <dt>Detail</dt><dd id="t-detail">–</dd>
+        <dt>Domains</dt><dd id="t-domains">–</dd>
+      </dl>
+      <p class="faint mt" style="font-size:11px">Untuk token tunnel, tambahkan Public Hostname di dashboard Cloudflare mengarah ke <span class="mono">http://localhost:8080</span> (sesuaikan PORT).</p>
+    </div>
+  </section>
+
+  <!-- USERS -->
+  <section class="view hidden" data-view="users">
+    <div class="card">
+      <div class="card-title"><span class="section-label">SSH accounts</span><button class="btn" onclick="loadUsers()">REFRESH</button></div>
+      <table class="table">
+        <thead><tr><th>Username</th><th>Password</th><th>Expired</th><th>Created</th><th></th></tr></thead>
+        <tbody id="users-tbody"><tr><td colspan="5" class="faint">memuat…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- LOGS -->
+  <section class="view hidden" data-view="logs">
+    <div class="card">
+      <div class="card-title"><span class="section-label">Tunnel log</span><button class="btn" onclick="loadLogs()">REFRESH</button></div>
+      <pre class="log-box" id="log-box">memuat…</pre>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let toastTimer;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+async function api(url, opts) {
+  const res = await fetch(url, opts);
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 || res.status === 403) { location.href = '/login'; return null; }
+  return data;
+}
+function formatBytes(b) {
+  if (!b) return '0 B';
+  const k = 1024, s = ['B','KB','MB','GB','TB'], i = Math.floor(Math.log(b)/Math.log(k));
+  return parseFloat((b/Math.pow(k,i)).toFixed(2)) + ' ' + s[i];
+}
+function formatTime(ts) {
+  const d = Math.floor(ts/86400), h = Math.floor((ts%86400)/3600), m = Math.floor((ts%3600)/60), s = ts%60;
+  return (d>0 ? d+'d ' : '') + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+/* ---- nav ---- */
+document.querySelectorAll('#nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const v = btn.dataset.view;
+    document.querySelectorAll('.view').forEach(s => s.classList.add('hidden'));
+    document.querySelector(`.view[data-view="${v}"]`).classList.remove('hidden');
+    if (v === 'overview') refreshOverview();
+    if (v === 'settings') reloadSettings();
+    if (v === 'tunnels') loadTunnel();
+    if (v === 'users') loadUsers();
+    if (v === 'logs') loadLogs();
+  });
+});
+
+/* ---- overview ---- */
+async function refreshOverview() {
+  try {
+    const s = await (await fetch('/api/stats')).json();
+    $('cpu-val').textContent = s.cpu + '%';
+    $('ram-val').textContent = s.ram + '%';
+    $('dl-val').textContent = formatBytes(s.rx);
+    $('ul-val').textContent = formatBytes(s.tx);
+    $('ov-uptime').textContent = formatTime(s.uptime);
+    $('ov-time').textContent = new Date().toLocaleTimeString();
+  } catch(e) {}
+  const st = await api('/api/admin/status');
+  if (!st) return;
+  $('ov-tunnel').textContent = st.tunnel.status;
+  $('ov-tunnel-detail').textContent = st.tunnel.detail;
+  $('ov-xray').textContent = st.xray.running ? 'running' : 'stopped';
+  $('ov-domains').textContent = (st.domains || []).join(', ') || '—';
+}
+setInterval(refreshOverview, 3000);
+
+/* ---- settings ---- */
+async function reloadSettings() {
+  const res = await api('/api/admin/settings');
+  if (!res) return;
+  const s = res.settings;
+  $('s-uuid').value = s.uuid || '';
+  $('s-name').value = s.name || '';
+  $('s-cfip').value = s.cfip || '';
+  $('s-cfport').value = s.cfport || '';
+  $('s-argo-domain').value = s.argo_domain || '';
+  $('s-token').value = s.token || '';
+  $('s-ssh-user').value = s.ssh_user || '';
+  $('s-ssh-pass').value = s.ssh_password || '';
+  $('s-quick').checked = !!s.quick_tunnel;
+  $('s-banner').value = s.banner || '';
+  $('s-response').value = s.response || '';
+}
+$('settings-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+  const body = {
+    uuid: $('s-uuid').value.trim(),
+    name: $('s-name').value.trim(),
+    cfip: $('s-cfip').value.trim(),
+    cfport: parseInt($('s-cfport').value) || 443,
+    argo_domain: $('s-argo-domain').value.trim(),
+    token: $('s-token').value.trim(),
+    ssh_user: $('s-ssh-user').value.trim(),
+    ssh_password: $('s-ssh-pass').value,
+    quick_tunnel: $('s-quick').checked,
+    banner: $('s-banner').value,
+    response: $('s-response').value,
+  };
+  const res = await api('/api/admin/settings', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+  });
+  if (res && res.ok) { toast('Settings applied'); reloadSettings(); }
+  else if (res) toast('Gagal menyimpan');
+  btn.disabled = false;
+});
+
+/* ---- tunnels ---- */
+async function loadTunnel() {
+  const st = await api('/api/admin/status');
+  if (!st) return;
+  $('t-mode').textContent = st.tunnel.status;
+  $('t-detail').textContent = st.tunnel.detail;
+  $('t-domains').textContent = (st.domains || []).join('\n') || '—';
+}
+async function restartTunnel() {
+  const b = $('tunnel-restart-btn'); b.disabled = true;
+  const res = await api('/api/admin/tunnel/restart', { method: 'POST' });
+  if (res && res.ok) { toast('Tunnel restarted'); loadTunnel(); }
+  b.disabled = false;
+}
+
+/* ---- users ---- */
+async function loadUsers() {
+  const res = await api('/api/admin/users');
+  if (!res) return;
+  const tbody = $('users-tbody');
+  const users = Object.entries(res.users || {}).sort((a, b) => a[0].localeCompare(b[0]));
+  if (!users.length) { tbody.innerHTML = '<tr><td colspan="5" class="faint">belum ada akun SSH</td></tr>'; return; }
+  const now = new Date().toISOString().slice(0, 10);
+  tbody.innerHTML = users.map(([u, d]) => {
+    const exp = d.expired;
+    const cls = exp !== 'never' && exp < now ? 'class="expired"' : '';
+    return `<tr>
+      <td>${u}</td>
+      <td>${d.password || '–'}</td>
+      <td ${cls}>${exp || '–'}</td>
+      <td>${d.created || '–'}</td>
+      <td><button class="btn danger" onclick="deleteUser('${u}')">DEL</button></td>
+    </tr>`;
+  }).join('');
+}
+async function deleteUser(u) {
+  if (!confirm('Hapus akun ' + u + '?')) return;
+  const res = await api('/api/admin/users/delete', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ username: u })
+  });
+  if (res && res.ok) { toast('User dihapus'); loadUsers(); }
+}
+
+/* ---- logs ---- */
+async function loadLogs() {
+  const res = await api('/api/admin/logs');
+  if (!res) return;
+  $('log-box').textContent = res.logs || '(kosong)';
+}
+
+/* ---- logout ---- */
+$('logout-btn').addEventListener('click', async () => {
+  await api('/api/logout', { method: 'POST' });
+  location.href = '/login';
+});
+
+refreshOverview();
+</script>
+</body>
+</html>

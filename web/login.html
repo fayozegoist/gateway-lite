@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOGIN — GATEWAYLITE</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap-narrow">
+  <div class="auth-card">
+    <div class="brand" style="margin-bottom:28px">
+      <span class="mark"></span>
+      <span class="wordmark">GatewayLite</span>
+    </div>
+    <h2 class="auth-title" style="font-size:18px">Admin access</h2>
+    <form id="login-form">
+      <div class="field">
+        <label for="user">Username</label>
+        <input class="input" id="user" name="username" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="pass">Password</label>
+        <input class="input" id="pass" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn primary" type="submit" style="width:100%">SIGN IN</button>
+      <p class="muted center mt" id="err" style="display:none;color:var(--danger)"></p>
+    </form>
+  </div>
+</div>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  btn.disabled = true;
+  const err = document.getElementById('err');
+  err.style.display = 'none';
+  try {
+    const res = await (await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ username: document.getElementById('user').value, password: document.getElementById('pass').value })
+    })).json();
+    if (res.ok) { location.href = res.redirect || '/admin'; }
+    else { err.textContent = res.error || 'Gagal login'; err.style.display = 'block'; }
+  } catch(e) { err.textContent = 'Request gagal'; err.style.display = 'block'; }
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>

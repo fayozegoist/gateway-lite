@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GATEWAYLITE</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark"></span>
+      <span class="wordmark">GatewayLite</span>
+    </div>
+    <span class="status-pill live"><span class="dot"></span>Live</span>
+  </header>
+
+  <section class="section">
+    <h1>Gateway Console</h1>
+    <p class="muted mt" style="margin-top:8px">Generate access nodes &amp; SSH accounts. Single endpoint, multiplexed transport.</p>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <span class="section-label">Telemetry</span>
+      <span class="section-label mono">1s refresh</span>
+    </div>
+    <div class="grid-4">
+      <div class="card">
+        <span class="section-label">CPU</span>
+        <div class="stat-value" id="cpu-val">–</div>
+        <div class="bar"><div class="bar-fill" id="cpu-bar" style="width:0%"></div></div>
+      </div>
+      <div class="card">
+        <span class="section-label">RAM</span>
+        <div class="stat-value" id="ram-val">–</div>
+        <div class="bar"><div class="bar-fill" id="ram-bar" style="width:0%"></div></div>
+      </div>
+      <div class="card">
+        <span class="section-label">Download</span>
+        <div class="stat-value" id="dl-total">0 B</div>
+        <div class="stat-sub" id="dl-speed">0 B/s</div>
+      </div>
+      <div class="card">
+        <span class="section-label">Upload</span>
+        <div class="stat-value" id="ul-total">0 B</div>
+        <div class="stat-sub" id="ul-speed">0 B/s</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <span class="section-label">Network traffic</span>
+      <span class="section-label mono">last 60s</span>
+    </div>
+    <div class="card" style="padding:12px">
+      <div style="width:100%;height:120px;position:relative"><canvas id="trafficChart"></canvas></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><span class="section-label">Node generator</span></div>
+    <div class="card">
+      <div class="card-title">
+        <span class="section-label">Bug SNI</span>
+      </div>
+      <div class="segment mb">
+        <button class="active" data-network="native" data-proto="vless" onclick="setProto(this)">VLESS</button>
+        <button data-network="native" data-proto="trojan" onclick="setProto(this)">TROJAN</button>
+      </div>
+
+      <div class="card-title" style="margin-top:20px">
+        <span class="section-label">Bug CDN</span>
+      </div>
+      <div class="segment">
+        <button data-network="argo" data-proto="vless" onclick="setProto(this)">VLESS</button>
+        <button data-network="argo" data-proto="vmess" onclick="setProto(this)">VMESS</button>
+        <button data-network="argo" data-proto="trojan" onclick="setProto(this)">TROJAN</button>
+      </div>
+
+      <div class="output mt">
+        <input class="input" id="config-output" type="text" readonly placeholder="Pilih salah satu node di atas...">
+        <button class="btn copy-btn" id="copy-btn" onclick="copyConfig()">COPY</button>
+      </div>
+
+      <div class="output mt">
+        <input class="input" id="sub-output" type="text" readonly>
+        <button class="btn copy-btn" onclick="copyText('sub-output', this)">COPY</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><span class="section-label">Create SSH account</span></div>
+    <div class="card">
+      <form id="ssh-form" class="grid-2" style="margin-bottom:16px">
+        <div class="field" style="margin:0">
+          <label for="ssh-user">Username</label>
+          <input class="input" id="ssh-user" name="username" autocomplete="off" placeholder="cth: user123" required>
+        </div>
+        <div class="field" style="margin:0">
+          <label for="ssh-pass">Password</label>
+          <input class="input" id="ssh-pass" name="password" type="text" autocomplete="off" placeholder="min 6 karakter" required>
+        </div>
+        <div class="field" style="margin:0">
+          <label for="ssh-days">Expired (hari)</label>
+          <input class="input" id="ssh-days" name="days" type="number" min="1" placeholder="kosong = lifetime">
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn primary" style="width:100%" type="submit">CREATE</button>
+        </div>
+      </form>
+      <div id="ssh-result" class="hidden">
+        <hr class="divider">
+        <dl class="kv">
+          <dt>Username</dt><dd id="r-user">–</dd>
+          <dt>Password</dt><dd id="r-pass">–</dd>
+          <dt>Expired</dt><dd id="r-exp">–</dd>
+          <dt>Server</dt><dd id="r-host">–</dd>
+          <dt>Port</dt><dd id="r-port">–</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span class="section-label">GatewayLite — Alpine · Python · Argo</span>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let toastTimer;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function copyText(id, btn) {
+  const el = $(id);
+  if (!el.value) return;
+  el.select(); el.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(el.value).then(() => {
+    if (btn) { const old = btn.textContent; btn.textContent = 'COPIED'; setTimeout(() => btn.textContent = old, 1500); }
+  });
+}
+function copyConfig() { copyText('config-output', $('copy-btn')); }
+
+function formatBytes(b) {
+  if (!b || b === 0) return '0 B';
+  const k = 1024, s = ['B','KB','MB','GB','TB'], i = Math.floor(Math.log(b)/Math.log(k));
+  return parseFloat((b/Math.pow(k,i)).toFixed(2)) + ' ' + s[i];
+}
+function formatTime(ts) {
+  const d = Math.floor(ts/86400), h = Math.floor((ts%86400)/3600),
+        m = Math.floor((ts%3600)/60), s = ts%60;
+  return (d>0 ? d+'d ' : '') + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+/* ---- chart ---- */
+const canvas = $('trafficChart'), ctx = canvas.getContext('2d');
+const MAX = 60;
+let hist = new Array(MAX).fill(0), lastRx = 0, first = true;
+function drawChart() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * devicePixelRatio; canvas.height = rect.height * devicePixelRatio;
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.strokeStyle = '#1c1c1c'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0,h/2); ctx.lineTo(w,h/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w/2,0); ctx.lineTo(w/2,h); ctx.stroke();
+  const max = Math.max(...hist, 1024);
+  ctx.beginPath();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (let i=0;i<hist.length;i++) {
+    const x = (i/(MAX-1))*w, y = h - (hist[i]/max)*(h-8) - 4;
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+}
+
+/* ---- stats ---- */
+async function refreshStats() {
+  try {
+    const data = await (await fetch('/api/stats')).json();
+    $('cpu-val').textContent = data.cpu + '%';
+    const cb = $('cpu-bar'); cb.style.width = data.cpu + '%'; cb.classList.toggle('warn', data.cpu > 80);
+    $('ram-val').textContent = data.ram + '%';
+    const rb = $('ram-bar'); rb.style.width = data.ram + '%'; rb.classList.toggle('warn', data.ram > 85);
+    let speed = 0;
+    if (!first) speed = Math.max(0, data.rx - lastRx);
+    first = false; lastRx = data.rx;
+    $('dl-total').textContent = formatBytes(data.rx);
+    $('dl-speed').textContent = formatBytes(speed) + '/s';
+    $('ul-total').textContent = formatBytes(data.tx);
+    $('ul-speed').textContent = formatBytes(Math.max(0, data.tx - (window._lastTx||0))) + '/s';
+    window._lastTx = data.tx;
+    hist.push(speed); hist.shift(); drawChart();
+  } catch(e) {}
+}
+refreshStats(); setInterval(refreshStats, 1000);
+window.addEventListener('resize', drawChart);
+
+/* ---- generator ---- */
+let current = { network: 'native', proto: 'vless' };
+function setProto(btn) {
+  document.querySelectorAll('.segment button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  current = { network: btn.dataset.network, proto: btn.dataset.proto };
+  generate();
+}
+async function generate() {
+  const out = $('config-output');
+  out.value = 'Loading…';
+  try {
+    const data = await (await fetch('/api/config')).json();
+    out.value = data[current.network][current.proto];
+  } catch(e) { out.value = 'Gagal mengambil konfigurasi.'; }
+}
+
+/* ---- sub link ---- */
+$('sub-output').value = location.origin + '/sub.txt';
+
+/* ---- create ssh ---- */
+$('ssh-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+  const body = {
+    username: $('ssh-user').value.trim(),
+    password: $('ssh-pass').value,
+    days: $('ssh-days').value || null
+  };
+  try {
+    const res = await (await fetch('/api/ssh', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    })).json();
+    if (res.ok) {
+      $('r-user').textContent = res.username;
+      $('r-pass').textContent = res.password;
+      $('r-exp').textContent = res.expired;
+      $('r-host').textContent = res.host;
+      $('r-port').textContent = res.port;
+      $('ssh-result').classList.remove('hidden');
+      e.target.reset();
+      toast('SSH account created');
+    } else {
+      toast(res.error || 'Gagal membuat akun');
+    }
+  } catch(e) { toast('Request gagal'); }
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>
