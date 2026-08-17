@@ -1,132 +1,221 @@
-# GatewayLite — Dropbear SSH + Xray (VLESS/VMESS/Trojan) dalam 1 Container Ringan
+# GatewayLite — Dropbear SSH + Xray dalam 1 Container Ringan
 
-Penggabungan dari:
-- [Ddfathu/Dropbear](https://github.com/Ddfathu/Dropbear) — SSH via Dropbear + Stunnel + WS + Argo
-- [Tamiraa9909/argo-hybrid](https://github.com/Tamiraa9909/argo-hybrid) — Xray Gateway + Dashboard
+Satu container **Alpine Linux** yang menyediakan:
 
-**Bedanya:** base OS diganti **Alpine Linux** (jauh lebih ringan), **Node.js dihilangkan**
-(dashboard & multiplexer ditulis ulang dalam Python murni), binary Xray/cloudflared diunduh
-**multi-source dengan auto-fallback**, dan satu env `TOKEN` menggantikan `ARGO_AUTH`/`CF_TUNNEL_TOKEN`
-(termasuk dukungan **banyak token** dipisah koma).
+- **SSH server (Dropbear)** — bisa diakses lewat **SSL (TLS)** dan **WebSocket (WS)**
+- **Xray** — node VPN **VLESS / VMESS / Trojan** (via WebSocket)
+- **Admin Panel** — buat akun SSH, generate node VPN, atur tunnel, tanpa login ke server
+
+Hasil akhirnya kamu punya **2 domain SSH** (pola dari [vmesssh](https://github.com/Ddfathu/vmesssh)):
+
+| Domain | Fungsi |
+|---|---|
+| Domain **Railway** (TCP proxy) | SSH via **SSL** (`SSH over TLS`) |
+| Domain **Cloudflare Tunnel** (argo) | SSH via **WebSocket** |
+
+---
 
 ## Arsitektur (SATU port publik)
 
 ```
-                     Railway TCP Proxy / HTTP domain :$PORT
-                                    |
-                         mux.py (Python asyncio)
-   sniff byte pertama + HTTP path:
-    0x16 (TLS) ............. -> stunnel :2443 --> Dropbear :22   (SSH-SSL)
-    WS /vless-mediafairy    -> Xray :8001   (VLESS WS)
-    WS /vmess-mediafairy    -> Xray :8001   (VMESS WS)
-    WS /trojan-mediafairy   -> Xray :8001   (TROJAN WS)
-    HTTP / , /api/* , /sub.txt -> dashboard :3000 (Python)
-    HTTP-WS lainnya / biner -> ws-proxy :8880 --> Dropbear :22  (SSH-WS)
-                                    |
-          cloudflared (banyak TOKEN atau quick-tunnel) --> localhost:$PORT
+        Railway HTTP domain :$PORT        Railway TCP proxy :$PORT
+                     |                          |
+                     +------------+-------------+
+                                  |
+                       mux.py (Python asyncio)
+      intip byte pertama + path HTTP:
+       0x16 (TLS) ................ -> stunnel :2443 --> Dropbear :22   (SSH-SSL)
+       WS /vless-mediafairy ...... -> Xray :8001   (VLESS WS)
+       WS /vmess-mediafairy ...... -> Xray :8001   (VMESS WS)
+       WS /trojan-mediafairy ..... -> Xray :8001   (TROJAN WS)
+       HTTP / , /api/* , /sub.txt -> dashboard :3000 (Python)
+       HTTP-WS lain / biner ...... -> ws-proxy :8880 --> Dropbear :22 (SSH-WS)
+                                  |
+        cloudflared (TOKEN) --> localhost:$PORT   <-- domain Cloudflare Tunnel
 ```
 
-Semua layanan internal (`22/2443/8880/8001/3000`) **tidak diekspos keluar** — hanya mux
-yang terbuka, sehingga aman.
+Semua layanan internal (`22/2443/8880/8001/3000`) **tidak diekspos ke luar** — hanya mux yang terbuka, jadi aman.
 
-## Environment Variables
+---
 
-| Variable | Default | Wajib | Keterangan |
-|---|---|---|---|
-| `UUID` | — | **Ya** | UUID klien VPN (VLESS/VMESS/Trojan) |
-| `ADMIN_USER` | — | Admin panel | Username login Admin Panel. **Harus di-set** agar `/admin` aktif |
-| `ADMIN_PASSWORD` | — | Admin panel | Password login Admin Panel. **Harus di-set** agar `/admin` aktif |
-| `TOKEN` | kosong | Opsional | Token Cloudflare Tunnel. **Boleh banyak, dipisah koma** (`t1,t2,t3`). Kosongkan untuk auto quick-tunnel |
-| `PORT` | 8080 | — | Port publik (Railway meng-inject otomatis) |
-| `SSH_USER` | `jatim` | — | User SSH utama |
-| `SSH_PASSWORD` | `jatim` | — | Password SSH utama |
-| `NAME` | `GATEWAY-LITE` | — | Alias pada nama config yang di-generate |
-| `CFIP` | `saas.sin.fan` | — | Bug IP CDN / SNI |
-| `CFPORT` | `443` | — | Port CDN |
-| `ARGO_DOMAIN` | kosong | — | Custom domain jika pakai `TOKEN` |
-| `QUICK_TUNNEL` | `1` | — | Aktifkan quick-tunnel trycloudflare jika `TOKEN` kosong |
+## Cara Deploy di Railway (langkah demi langkah)
+
+### 1. Fork repo
+
+1. Buka [github.com/fayozegoist/gateway-lite](https://github.com/fayozegoist/gateway-lite)
+2. Klik **Fork** (kanan atas) → pilih akun kamu → **Create fork**
+
+### 2. Deploy ke Railway
+
+1. Buka [railway.app](https://railway.app) → login (bisa pakai akun GitHub)
+2. Klik **New Project** → **Deploy from GitHub repo**
+3. Pilih hasil fork kamu → **Deploy Now**
+4. Tunggu build selesai (2–3 menit). Railway otomatis mendeteksi port → **HTTP domain aktif otomatis**
+5. Buka **Settings → Networking** untuk melihat domain, contoh: `nama-service-production.up.railway.app`
+
+### 3. Set Environment Variables
+
+Di **Variables** (tab service), tambahkan minimal ini:
+
+| Variable | Contoh | Wajib? |
+|---|---|---|
+| `UUID` | `8c78114c-d737-47ee-a812-93583aea16e6` | **Ya** |
+| `ADMIN_USER` | `admin` | Ya (agar panel admin aktif) |
+| `ADMIN_PASSWORD` | `rahasia123` | Ya |
+| `TOKEN` | token Cloudflare tunnel | Opsional (untuk SSH-WS via Cloudflare) |
+| `ARGO_DOMAIN` | `argo.domainkamu.com` | Opsional |
+
+> `UUID` bisa di-generate di [uuidgenerator.net](https://www.uuidgenerator.net).
+
+### 4. (Opsional) Aktifkan SSH-SSL via TCP Proxy
+
+Railway tidak bisa membuka port TCP otomatis dari dalam container, jadi untuk SSH-SSL perlu **TCP Proxy**:
+
+- Buka **Settings → Networking → TCP Proxy → Create TCP Proxy**
+- Arahkan ke **App Port = 8080** (sama dengan `$PORT`)
+- Catat endpoint-nya, contoh: `nama.proxy.rlwy.net:31111`
+
+---
+
+## Setup Cloudflare Tunnel (untuk domain SSH-WS)
+
+> Tanpa langkah ini, **SSH-SSL (Railway) & SSH-WS (Railway) sudah bisa dipakai**.
+> Ini tambahan supaya kamu punya **domain Cloudflare untuk SSH via WebSocket**.
+
+### 1. Buat Tunnel di Zero Trust
+
+1. Buka [dash.cloudflare.com](https://dash.cloudflare.com) → masuk ke akun
+2. Kiri bawah: **Zero Trust** → **Networks → Tunnels**
+3. Klik **Create a tunnel** → pilih **Cloudflared** → **Next**
+4. Beri nama tunnel (misal `gateway`) → **Save tunnel**
+5. Halaman **Install and run a connector** → pilih OS apa saja → salin **token** (bagian yang panjang, mulai `eyJh...`)
+6. **Skip** langkah "run the connector" (kita jalankan otomatis di container)
+
+### 2. Isi token di Railway
+
+1. Di Railway, buka **Variables**
+2. Tambahkan `TOKEN` = token dari langkah di atas (tempel tanpa spasi)
+3. Tambahkan `ARGO_DOMAIN` = subdomain yang ingin dipakai, misal `argo.domainkamu.com`
+4. Deploy ulang / restart service. Cloudflared otomatis jalan di dalam container.
+
+### 3. Tambahkan Public Hostname
+
+1. Kembali ke **Zero Trust → Networks → Tunnels** → klik tunnel kamu
+2. Tab **Public Hostname** → **Add a public hostname**
+3. Isi:
+   - **Subdomain**: `argo`
+   - **Domain**: `domainkamu.com`
+   - **Service type**: `HTTP`
+   - **URL**: **`http://localhost:8080`**
+4. **Save hostname**
+
+> **⚠️ PENTING:** URL harus **`http://localhost:8080`** (port **mux**), **bukan** `8001` (Xray).
+> Mux yang memecah lalu lintas: WS path Xray → Xray, WS lain → SSH. Kalau diarahkan ke `8001`,
+> SSH-WS akan gagal (502) karena Xray tidak mengerti koneksi SSH.
+
+### 4. Aktifkan WebSocket di Cloudflare
+
+Agar SSH-WS lancar, pastikan pengaturan domain ini ON/OFF:
+
+1. **Websites → pilih domain → Network → WebSockets: ON**
+2. **Security → Bots → Bot Fight Mode: OFF**
+3. **Security → WAF → Settings → Browser Integrity Check: OFF**
+
+---
+
+## Panduan Koneksi SSH (untuk user)
+
+### SSH-SSL (domain Railway / TCP proxy)
+
+Klien SSH dengan mode **SSL/TLS** (misal HTTP Custom, KPN Tunnel, atau stunnel client):
+
+- **Host**: endpoint TCP proxy kamu, contoh `nama.proxy.rlwy.net`
+- **Port**: `31111` (port TCP proxy)
+- **Mode**: SSL / TLS
+- **Username / Password**: akun SSH yang dibuat di panel
+
+### SSH-WebSocket (domain Cloudflare)
+
+Klien SSH dengan mode **WebSocket**:
+
+- **Host**: domain Cloudflare kamu, contoh `argo.domainkamu.com`
+- **Port**: `443`
+- **Mode**: WebSocket
+- **Username / Password**: akun SSH yang dibuat di panel
+
+> SSH-WS juga bisa lewat domain Railway (`nama-service-production.up.railway.app:443`)
+> untuk jalur cadangan.
+
+### SSH-WebSocket (domain Railway, cadangan)
+
+- **Host**: `nama-service-production.up.railway.app`
+- **Port**: `443`
+- **Mode**: WebSocket
+
+---
 
 ## Admin Panel
 
-Panel admin di **`/admin`** (wajib login dengan `ADMIN_USER`/`ADMIN_PASSWORD`).
-Tanpa kedua env itu di-set, admin panel **nonaktif** (halaman `/login` & `/admin` 404).
+Panel admin di **`/admin`** pada domain Railway, contoh: `https://nama-service-production.up.railway.app/admin`
 
-Fitur admin:
-- **Settings** — ubah runtime: `UUID`, `NAME`, `CFIP`, `CFPORT`, `ARGO_DOMAIN`,
-  `TOKEN` (multi-token), `SSH_USER`, `SSH_PASSWORD`, `QUICK_TUNNEL`,
-  **banner Dropbear** (pesan sebelum login), dan **response setelah login**.
-- Perubahan **langsung diterapkan live**: TOKEN → cloudflared di-restart,
-  UUID → Xray di-restart, banner/SSH user → ditulis ulang, tanpa redeploy.
-- **Tunnels** — status & restart cloudflared, daftar domain trycloudflare.
-- **SSH Users** — daftar/hapus akun SSH.
+Login pakai `ADMIN_USER` / `ADMIN_PASSWORD`.
+
+Fitur:
+- **Settings** — ubah `UUID`, `TOKEN`, `ARGO_DOMAIN`, `SSH_USER`, `SSH_PASSWORD`, banner, dll. **Langsung berlaku tanpa redeploy.**
+- **Tunnels** — status cloudflared, restart, daftar domain.
+- **SSH Users** — lihat/hapus akun SSH.
 - **Logs** — log tunnel.
 
-Persistensi: perubahan disimpan ke `settings.json` (bertahan selama instance hidup).
-Railway **redeploy** mengembalikan ke nilai env.
+### Halaman publik `/`
 
-## Mode User (Publik)
+Terbuka untuk semua:
+- **Generate node** — VLESS / VMESS / Trojan (bug SNI / bug CDN), tinggal copy ke aplikasi.
+- **Create SSH** — buat akun SSH + masa aktif (hari).
+- **Subscription** — semua link di `/sub.txt`.
 
-Halaman utama `/` terbuka untuk semua:
-- **Generate node** — VLESS/TROJAN (Bug SNI) + VLESS/VMESS/TROJAN (Bug CDN), copy ke clipboard.
-- **Create SSH** — username + password + expired (hari), langsung jadi.
-- **Subscription** — `/sub.txt` berisi semua link argo yang ter-generate.
-- **Telemetry** — CPU/RAM/Download/Upload + grafik traffic 60 detik.
-
-## Deployment di Railway
-
-1. **Fork** repo ini ke GitHub kamu.
-2. Buka [Railway](https://railway.app) → **New Project** → **Deploy from GitHub repo** → pilih fork ini → **Deploy Now**.
-3. Tambahkan env `UUID` (wajib) dan opsional lainnya (`TOKEN`, `SSH_USER`, dll).
-4. Railway otomatis mendeteksi `PORT` → **HTTP domain otomatis aktif tanpa setup manual**
-   → buka domain `.up.railway.app` untuk Dashboard.
-
-### Port mana yang otomatis vs manual?
-
-| Jalur | Setup manual |
-|---|---|
-| Dashboard `/`, `/api/*`, `/sub.txt` | **Otomatis** (via domain HTTP Railway) |
-| VLESS/VMESS/Trojan via WS (Argo / domain) | **Otomatis** |
-| SSH-WS | **Otomatis** |
-| SSH-SSL (stunnel TLS) | **1 TCP Proxy manual** (opsional, karena Railway tidak bisa membuka port TCP otomatis dari dalam container) |
-
-Untuk SSH-SSL: Settings → Networking → **TCP Proxy** → arahkan ke port yang sama dengan `PORT`.
-
-### Cloudflare Tunnel (optional)
-
-1. Cloudflare Zero Trust → **Networks → Tunnels → Create a tunnel (Cloudflared)** → salin token.
-2. Isi env `TOKEN` di Railway (boleh `t1,t2,t3` untuk banyak tunnel).
-3. Di tab **Public Hostname** tambahkan service:
-   - Service type **HTTP**, URL **`http://localhost:8080`** (atau sesuai `PORT`).
-   - **PENTING:** arahkan ke port **mux** (`$PORT`, default 8080), **bukan** langsung ke
-     Xray (`8001`). Mux yang memecah: WS path Xray → Xray, WS lain → SSH-WS. Jika diarahkan
-     ke `8001`, hostname hanya melayani Xray dan **SSH-WS gagal (502)**.
-4. Tanpa `TOKEN`, container otomatis membuat **quick tunnel** (`trycloudflare.com`)
-   dan domain-nya otomatis di-detect Dashboard → semua link tergenerate di `/api/config` & `/sub.txt`.
-
-### Networking Cloudflare agar WS jalan
-- Network → **WebSockets**: ON
-- Security → Bots → **Bot Fight Mode**: OFF
-- Security → WAF → Settings → **Browser Integrity Check**: OFF
+---
 
 ## Manajemen Akun SSH
 
 Login SSH (via WS/SSL), lalu jalankan:
 
 ```bash
-menu        # menu interaktif
-addssh user pass            # buat akun
-addssh user pass 30         # buat akun + expired 30 hari
-listssh                     # daftar akun
-delssh user                 # hapus akun
+menu          # menu interaktif
+addssh user pass          # buat akun
+addssh user pass 30       # buat akun + expired 30 hari
+listssh                   # daftar akun
+delssh user               # hapus akun
 ```
+
+---
+
+## Environment Variables (lengkap)
+
+| Variable | Default | Keterangan |
+|---|---|---|
+| `UUID` | — | UUID klien VPN (VLESS/VMESS/Trojan). **Wajib.** |
+| `ADMIN_USER` | — | Username admin panel. Wajib agar `/admin` aktif |
+| `ADMIN_PASSWORD` | — | Password admin panel. Wajib agar `/admin` aktif |
+| `TOKEN` | kosong | Token Cloudflare Tunnel. Boleh banyak dipisah koma (`t1,t2`). Kosongkan untuk quick tunnel |
+| `ARGO_DOMAIN` | kosong | Custom domain jika pakai `TOKEN` |
+| `PORT` | 8080 | Port publik (Railway inject otomatis) |
+| `SSH_USER` | `jatim` | User SSH utama |
+| `SSH_PASSWORD` | `jatim` | Password SSH utama |
+| `NAME` | `GATEWAY-LITE` | Alias nama config yang di-generate |
+| `CFIP` | `saas.sin.fan` | IP CDN / SNI untuk node bug |
+| `CFPORT` | `443` | Port CDN |
+| `QUICK_TUNNEL` | `1` | Quick tunnel trycloudflare jika `TOKEN` kosong |
+
+---
 
 ## Kenapa lebih ringan?
 
-- Base **Alpine Linux** (~5MB) menggantikan Ubuntu 22.04.
-- **Tanpa Node.js**: dashboard + mux 100% Python (std library only, tidak ada dependency).
-- Binary Xray/cloudflared diunduh saat *runtime* dengan **multi-source** (official GitHub
-  → mirror `ssss.nyc.mn`) dan auto-fallback, image jadi kecil & multi-arch (amd64/arm64).
-- Semua statistik dibaca langsung dari `/proc` (tanpa library).
+- Base **Alpine Linux** (~5MB) menggantikan Ubuntu.
+- **Tanpa Node.js** — dashboard & mux 100% Python (stdlib, tanpa dependency).
+- Binary Xray/cloudflared diunduh saat runtime, **multi-source + auto-fallback** → image kecil & multi-arch (amd64/arm64).
+- Semua statistik dibaca langsung dari `/proc`.
+
+---
 
 ## Struktur File
 
@@ -139,7 +228,7 @@ dashboard.py          Dashboard + Admin Panel + pengelola tunnel/Xray
 settings.py           Penyimpanan settings + apply runtime
 gen-xray-config.py    Generate config.json Xray
 download-bin.py       Multi-source download + auto-fallback
-web/style.css         Design system monochrome (Vercel x Meta)
+web/style.css         Design system monochrome
 web/public.html       UI user: generate node + create SSH
 web/login.html        Login admin
 web/admin.html        Admin panel
