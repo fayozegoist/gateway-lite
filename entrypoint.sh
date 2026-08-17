@@ -1,7 +1,7 @@
 #!/bin/bash
 
-SSH_USER="${SSH_USER:-jatim}"
-SSH_PASS="${SSH_PASSWORD:-jatim}"
+SSH_USER="${SSH_USER:-}"
+SSH_PASS="${SSH_PASSWORD:-}"
 
 # Port PUBLIK (Railway inject $PORT untuk HTTP domain otomatis)
 PUBLIC_PORT="${PORT:-8080}"
@@ -20,33 +20,27 @@ mkdir -p /opt/gateway/bin /opt/gateway/logs /etc/ssh-sni
 
 echo "[*] Mengonfigurasi Banner Dropbear (pra-login)..."
 cat << 'EOF' > /etc/dropbear_banner
-[1;31m    ⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠛⢉⢉⠉⠉⠻⣿⣿⣿⣿⣿⣿    [0m
-[1;33m    ⣿⣿⣿⣿⣿⣿⣿⠟⠠⡰⣕⣗⣷⣧⣀⣅⠘⣿⣿⣿⣿⣿    [0m
-[1;32m    ⣿⣿⣿⣿⣿⣿⠃⣠⣳⣟⣿⣿⣷⣿⡿⣜⠄⣿⣿⣿⣿⣿    [0m
-[1;36m    ⣿⣿⣿⣿⡿⠁⠄⣳⢷⣿⣿⣿⣿⡿⣝⠖⠄⣿⣿⣿⣿⣿    [0m
-[1;34m    ⣿⣿⣿⣿⠃⠄⢢⡹⣿⢷⣯⢿⢷⡫⣗⠍⢰⣿⣿⣿⣿⣿    [0m
-[1;35m    ⣿⣿⣿⡏⢀⢄⠤⣁⠋⠿⣗⣟⡯⡏⢎⠁⢸⣿⣿⣿⣿⣿    [0m
-[1;31m    ⣿⣿⣿⠄⢔⢕⣯⣿⣿⡲⡤⡄⡤⠄⡀⢠⣿⣿⣿⣿⣿⣿    [0m
-[1;33m    ⣿⣿⠇⠠⡳⣯⣿⣿⣾⢵⣫⢎⢎⠆⢀⣿⣿⣿⣿⣿⣿⣿    [0m
-[1;32m    ⣿⣿⠄⢨⣫⣿⣿⡿⣿⣻⢎⡗⡕⡅⢸⣿⣿⣿⣿⣿⣿⣿    [0m
-[1;36m    ⣿⣿⠄⢜⢾⣾⣿⣿⣟⣗⢯⡪⡳⡀⢸⣿⣿⣿⣿⣿⣿⣿    [0m
-[1;34m    ⣿⣿⠄⢸⢽⣿⣷⣿⣻⡮⡧⡳⡱⡁⢸⣿⣿⣿⣿⣿⣿⣿    [0m
-[1;35m    ⣿⣿⡄⢨⣻⣽⣿⣟⣿⣞⣗⡽⡸⡐⢸⣿⣿⣿⣿⣿⣿⣿    [0m
-[1;31m    ⣿⣿⡇⢀⢗⣿⣿⣿⣿⡿⣞⡵⡣⣊⢸⣿⣿⣿⣿⣿⣿⣿    [0m
-[1;33m    ⣿⣿⣿⡀⡣⣗⣿⣿⣿⣿⣯⡯⡺⣼⠎⣿⣿⣿⣿⣿⣿⣿    [0m
-[1;32m    ⣿⣿⣿⣧⠐⡵⣻⣟⣯⣿⣷⣟⣝⢞⡿⢹⣿⣿⣿⣿⣿⣿    [0m
-[1;36m    ⣿⣿⣿⣿⡆⢘⡺⣽⢿⣻⣿⣗⡷⣹⢩⢃⢿⣿⣿⣿⣿⣿    [0m
-[1;34m    ⣿⣿⣿⣿⣷⠄⠪⣯⣟⣿⢯⣿⣻⣜⢎⢆⠜⣿⣿⣿⣿⣿    [0m
-[1;35m    ⣿⣿⣿⣿⣿⡆⠄⢣⣻⣽⣿⣿⣟⣾⡮⡺⡸⠸⣿⣿⣿⣿    [0m
-[1;31m    ⣿⣿⡿⠛⠉⠁⠄⢕⡳⣽⡾⣿⢽⣯⡿⣮⢚⣅⠹⣿⣿⣿    [0m
-[1;33m    ⡿⠋⠄⠄⠄⠄⢀⠒⠝⣞⢿⡿⣿⣽⢿⡽⣧⣳⡅⠌⠻⣿    [0m
-[1;32m    ⠁⠄⠄⠄⠄⠄⠐⡐⠱⡱⣻⡻⣝⣮⣟⣿⣻⣟⣻⡺⣊     [0m
-
-[1;36m==============================[0m
-[1;32m    Welcome To GatewayLite    [0m
-[1;36m==============================[0m
-[1;33mJoin Channel Tele: @MediafairyCH[0m
-[1;36m==============================[0m
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠛⢉⢉⠉⠉⠻⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⠟⠠⡰⣕⣗⣷⣧⣀⣅⠘⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⠃⣠⣳⣟⣿⣿⣷⣿⡿⣜⠄⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⡿⠁⠄⣳⢷⣿⣿⣿⣿⡿⣝⠖⠄⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⠃⠄⢢⡹⣿⢷⣯⢿⢷⡫⣗⠍⢰⣿⣿⣿⣿⣿
+⣿⣿⣿⡏⢀⢄⠤⣁⠋⠿⣗⣟⡯⡏⢎⠁⢸⣿⣿⣿⣿⣿
+⣿⣿⣿⠄⢔⢕⣯⣿⣿⡲⡤⡄⡤⠄⡀⢠⣿⣿⣿⣿⣿⣿
+⣿⣿⠇⠠⡳⣯⣿⣿⣾⢵⣫⢎⢎⠆⢀⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⠄⢨⣫⣿⣿⡿⣿⣻⢎⡗⡕⡅⢸⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⠄⢜⢾⣾⣿⣿⣟⣗⢯⡪⡳⡀⢸⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⠄⢸⢽⣿⣷⣿⣻⡮⡧⡳⡱⡁⢸⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⡄⢨⣻⣽⣿⣟⣿⣞⣗⡽⡸⡐⢸⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⡇⢀⢗⣿⣿⣿⣿⡿⣞⡵⡣⣊⢸⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⡀⡣⣗⣿⣿⣿⣿⣯⡯⡺⣼⠎⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣧⠐⡵⣻⣟⣯⣿⣷⣟⣝⢞⡿⢹⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⡆⢘⡺⣽⢿⣻⣿⣗⡷⣹⢩⢃⢿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣷⠄⠪⣯⣟⣿⢯⣿⣻⣜⢎⢆⠜⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⡆⠄⢣⣻⣽⣿⣿⣟⣾⡮⡺⡸⠸⣿⣿⣿⣿
+⣿⣿⡿⠛⠉⠁⠄⢕⡳⣽⡾⣿⢽⣯⡿⣮⢚⣅⠹⣿⣿⣿
+⡿⠋⠄⠄⠄⠄⢀⠒⠝⣞⢿⡿⣿⣽⢿⡽⣧⣳⡅⠌⠻⣿
+⠁⠄⠄⠄⠄⠄⠐⡐⠱⡱⣻⡻⣝⣮⣟⣿⣻⣟⣻⡺⣊
 EOF
 
 echo "[*] Mengonfigurasi Respon Server (pasca-login)..."
@@ -66,12 +60,15 @@ EOF
 chmod +x /etc/profile.d/99-respon-server.sh
 
 echo "[*] Mengonfigurasi User SSH..."
-if ! id "$SSH_USER" &>/dev/null; then
-    useradd -m -s /bin/bash "$SSH_USER"
-    groupadd -f wheel
-    usermod -aG wheel "$SSH_USER"
+if [ -n "$SSH_USER" ] && [ -n "$SSH_PASS" ]; then
+    if ! id "$SSH_USER" &>/dev/null; then
+        useradd -m -s /bin/bash "$SSH_USER"
+        groupadd -f wheel
+        usermod -aG wheel "$SSH_USER"
+    fi
+    echo "$SSH_USER:$SSH_PASS" | chpasswd
+    cp /root/.bashrc "/home/$SSH_USER/.bashrc" 2>/dev/null
 fi
-echo "$SSH_USER:$SSH_PASS" | chpasswd
 
 cat >> /root/.bashrc << 'EOF'
 clear
@@ -82,7 +79,6 @@ alias +x='chmod +x'
 alias cls='clear;ls'
 menu
 EOF
-cp /root/.bashrc "/home/$SSH_USER/.bashrc" 2>/dev/null
 
 echo "[*] Memulai Dropbear di 127.0.0.1:22 ..."
 /usr/sbin/dropbear -R -p 127.0.0.1:22 -b /etc/dropbear_banner -W 65536

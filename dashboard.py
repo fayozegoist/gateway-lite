@@ -167,10 +167,33 @@ class TunnelManager:
                 except Exception:
                     pass
                 try:
-                    p.wait(timeout=5)
+                    p.wait(timeout=3)
                 except Exception:
-                    pass
+                    try:
+                        p.kill()
+                    except Exception:
+                        pass
+                    try:
+                        p.wait(timeout=3)
+                    except Exception:
+                        pass
             self.procs = []
+        self._reap_children()
+
+    def _reap_children(self):
+        """Bersihkan zombie (child yang sudah exit tapi belum di-wait)."""
+        while True:
+            try:
+                pid, _ = os.waitpid(-1, os.WNOHANG)
+                if pid == 0:
+                    break
+            except ChildProcessError:
+                break
+
+    def healthy(self):
+        """Apakah cloudflared yang dikelola masih benar-benar hidup."""
+        with self.lock:
+            return any(p.poll() is None for p in self.procs)
 
     def sync(self):
         self.stop()
@@ -211,6 +234,23 @@ class TunnelManager:
         self.status = status
         self.detail = detail
         print(f"[dashboard] tunnel sync: {status} — {detail}", flush=True)
+
+
+def tunnel_watchdog():
+    """Auto-restart cloudflared bila mati, agar tunnel tidak down selamanya."""
+    global _tunnels
+    while True:
+        time.sleep(15)
+        try:
+            d = S.load()
+            token = (d.get("token") or "").strip()
+            quick = bool(d.get("quick_tunnel"))
+            expected = bool(token) or (quick and not token)
+            if expected and not _tunnels.healthy():
+                print("[dashboard] cloudflared mati, restart otomatis...", flush=True)
+                _tunnels.sync()
+        except Exception:
+            pass
 
 
 def stop_xray():
@@ -492,7 +532,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._json({"error": "unauthorized"}, 403)
                 return
             self._json({
-                "tunnel": {"status": _tunnels.status, "detail": _tunnels.detail},
+                "tunnel": {"status": _tunnels.status, "detail": _tunnels.detail,
+                           "healthy": _tunnels.healthy()},
                 "xray": {"running": xray_running()},
                 "domains": _domains,
                 "admin_enabled": ADMIN_ENABLED,
@@ -649,6 +690,7 @@ def main():
         _xray_proc = None
 
     threading.Thread(target=domain_poller, daemon=True).start()
+    threading.Thread(target=tunnel_watchdog, daemon=True).start()
 
     server = http.server.ThreadingHTTPServer(("0.0.0.0", DASH_PORT), Handler)
     print(f"[dashboard] GatewayLite aktif di 0.0.0.0:{DASH_PORT} "

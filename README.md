@@ -203,8 +203,8 @@ delssh user               # hapus akun
 | `TOKEN` | kosong | Token Cloudflare Tunnel. Boleh banyak dipisah koma (`t1,t2`). Kosongkan untuk quick tunnel |
 | `ARGO_DOMAIN` | kosong | Custom domain jika pakai `TOKEN` |
 | `PORT` | 8080 | Port publik (Railway inject otomatis) |
-| `SSH_USER` | `jatim` | User SSH utama |
-| `SSH_PASSWORD` | `jatim` | Password SSH utama |
+| `SSH_USER` | kosong | User SSH utama (kosongkan = tanpa user bawaan) |
+| `SSH_PASSWORD` | kosong | Password SSH utama (wajib jika `SSH_USER` diisi) |
 | `NAME` | `GATEWAY-LITE` | Alias nama config yang di-generate |
 | `CFIP` | `saas.sin.fan` | IP CDN / SNI untuk node bug |
 | `CFPORT` | `443` | Port CDN |
