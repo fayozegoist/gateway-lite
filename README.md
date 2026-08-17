@@ -96,7 +96,10 @@ Untuk SSH-SSL: Settings → Networking → **TCP Proxy** → arahkan ke port yan
 1. Cloudflare Zero Trust → **Networks → Tunnels → Create a tunnel (Cloudflared)** → salin token.
 2. Isi env `TOKEN` di Railway (boleh `t1,t2,t3` untuk banyak tunnel).
 3. Di tab **Public Hostname** tambahkan service:
-   - Service type **HTTP**, URL `http://localhost:8080` (atau sesuai `PORT`).
+   - Service type **HTTP**, URL **`http://localhost:8080`** (atau sesuai `PORT`).
+   - **PENTING:** arahkan ke port **mux** (`$PORT`, default 8080), **bukan** langsung ke
+     Xray (`8001`). Mux yang memecah: WS path Xray → Xray, WS lain → SSH-WS. Jika diarahkan
+     ke `8001`, hostname hanya melayani Xray dan **SSH-WS gagal (502)**.
 4. Tanpa `TOKEN`, container otomatis membuat **quick tunnel** (`trycloudflare.com`)
    dan domain-nya otomatis di-detect Dashboard → semua link tergenerate di `/api/config` & `/sub.txt`.
 
