@@ -1,7 +1,7 @@
 #!/bin/bash
 
-SSH_USER="${SSH_USER:-}"
-SSH_PASS="${SSH_PASSWORD:-}"
+SSH_USER="${SSH_USER:-hidup}"
+SSH_PASS="${SSH_PASSWORD:-jokowi}"
 
 # Port PUBLIK (Railway inject $PORT untuk HTTP domain otomatis)
 PUBLIC_PORT="${PORT:-8080}"
