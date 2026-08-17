@@ -63,7 +63,7 @@ EOF
 cp /root/.bashrc "/home/$SSH_USER/.bashrc" 2>/dev/null
 
 echo "[*] Memulai Dropbear di 127.0.0.1:22 ..."
-/usr/sbin/dropbear -p 127.0.0.1:22 -b /etc/dropbear_banner -W 65536
+/usr/sbin/dropbear -R -p 127.0.0.1:22 -b /etc/dropbear_banner -W 65536
 
 echo "[*] Memulai Stunnel (internal, port $SSL_INTERNAL_PORT)..."
 cat > /etc/stunnel/stunnel.conf << EOF
